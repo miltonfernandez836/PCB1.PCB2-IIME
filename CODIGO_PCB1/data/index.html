@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HMI - THC Plasma</title>
+    <style>
+        /* ESTILOS GENERALES */
+        body { font-family: -apple-system, sans-serif; background-color: #282c34; color: #ffffff; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 1100px; background-color: #3a3f4b; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); overflow: hidden; }
+        header { background-color: #4a4f5a; padding: 15px 25px; border-bottom: 1px solid #555; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; font-size: 1.5em; }
+        #status-light { width: 20px; height: 20px; border-radius: 50%; background-color: #f44336; transition: background-color 0.3s; box-shadow: 0 0 10px rgba(0,0,0,0.5) inset; }
+        
+        main { padding: 20px; display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; align-items: start; }
+        @media (max-width: 768px) { main { grid-template-columns: 1fr; } }
+
+        .panel-left, .panel-right { display: flex; flex-direction: column; gap: 20px; }
+        .card { background-color: #4a4f5a; border-radius: 8px; padding: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
+        .card h2 { margin-top: 0; margin-bottom: 15px; font-size: 1.1em; color: #b0b8c4; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #555; padding-bottom: 10px;}
+
+        /* VISUALIZADORES */
+        .volt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .volt-box { text-align: center; background-color: #282c34; padding: 10px; border-radius: 8px; border: 1px solid #555; }
+        .data-display { font-size: 3em; font-weight: 700; color: #61dafb; margin: 5px 0; }
+        .data-display span.unit { font-size: 0.4em; font-weight: 400; color: #b0b8c4; margin-left: 5px; }
+
+        #estado-thc { font-size: 2em; font-weight: 700; color: #ffffff; padding: 20px; border-radius: 6px; background-color: #282c34; text-align: center; transition: background-color 0.3s ease; }
+        @keyframes blinker { 50% { opacity: 0.5; } }
+        .blink { animation: blinker 1s linear infinite; background-color: #d32f2f !important; }
+
+        /* EXTRACTOR */
+        .extractor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
+        .zone-indicator { background-color: #282c34; padding: 15px 5px; border-radius: 6px; text-align: center; border: 2px solid #555; transition: all 0.3s; }
+        .zone-indicator.active { background-color: #4caf50; border-color: #81c784; box-shadow: 0 0 10px rgba(76, 175, 80, 0.4); }
+        .zone-indicator span { font-weight: bold; color: #ddd; font-size: 1.2em;}
+        
+        /* BOTÓN UNIFICADO MOTOR (Estilos Dinámicos) */
+        #btn-motor-unified {
+            width: 100%; padding: 20px; font-size: 1.4rem; font-weight: bold;
+            border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s;
+            text-transform: uppercase; margin-top: 10px;
+            color: #b0bec5; background-color: #37474f; border: 2px solid #455a64; /* OFF */
+        }
+        #btn-motor-unified.auto-on {
+            background-color: #0288d1; color: white; border-color: #29b6f6; /* AZUL (Auto/Timer) */
+            box-shadow: 0 0 15px rgba(3, 169, 244, 0.4);
+        }
+        #btn-motor-unified.manual-on {
+            background-color: #ef6c00; color: white; border-color: #ffa726; /* NARANJA (Manual) */
+            box-shadow: 0 0 15px rgba(255, 152, 0, 0.4);
+        }
+        #btn-motor-unified.fault {
+            background-color: #c62828; color: white; border-color: #ef5350; /* ROJO (Falla) */
+            animation: blinker 1s infinite;
+        }
+
+        /* CONTROLES */
+        .input-group { display: flex; flex-direction: column; margin-bottom: 15px; width: 100%; }
+        .input-group label { font-size: 0.9em; color: #b0b8c4; margin-bottom: 5px; }
+        .input-group input, .input-group select { font-size: 1.1em; padding: 8px; border: none; border-radius: 6px; background-color: #282c34; color: #ffffff; border: 1px solid #666; width: 100%; box-sizing: border-box; }
+        
+        button { width: 100%; box-sizing: border-box; }
+
+        .btn-3d {
+            font-size: 1em; padding: 12px; border: none; border-radius: 6px;
+            font-weight: 700; cursor: pointer; transition: all 0.1s;
+            position: relative; top: 0; margin-top: 5px;
+            color: white; text-transform: uppercase; width: 100%;
+        }
+        .btn-3d:active { top: 4px; box-shadow: none !important; }
+
+        .btn-blue { background-color: #2196f3; box-shadow: 0 4px 0 #0d47a1; }
+        .btn-cyan { background-color: #00bcd4; box-shadow: 0 4px 0 #006064; color: #282c34; }
+        .btn-orange { background-color: #ff9800; box-shadow: 0 4px 0 #e65100; }
+        
+        .btn-danger { 
+            background-color: #ff0000; box-shadow: 0 6px 0 #990000;
+            font-size: 1.4rem; padding: 25px; border: 2px solid #ff4d4d;
+            border-radius: 8px; font-weight: bold; color: white; cursor: pointer;
+            width: 100%; position: relative;
+        }
+        .btn-danger:active { top: 6px; box-shadow: none; }
+
+        hr.divider { border: none; border-top: 1px solid #555; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>HMI - THC Plasma</h1>
+            <div id="status-light" title="Estado de Conexión"></div>
+        </header>
+        
+        <main>
+            <div class="panel-left">
+                <div class="card">
+                    <h2>Monitoreo Arco</h2>
+                    <div class="volt-grid">
+                        <div class="volt-box">
+                            <h3>VOLTAJE REAL</h3>
+                            <div class="data-display"><span id="voltaje-arco">---</span><span class="unit">V</span></div>
+                        </div>
+                        <div class="volt-box">
+                            <h3>SETPOINT</h3>
+                            <div class="data-display"><span id="voltaje-setpoint">---</span><span class="unit">V</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Estado del Control</h2>
+                    <div id="estado-thc">Desconectado</div>
+                </div>
+
+                <div class="card">
+                    <h2>Sistema de Extracción</h2>
+                    <div class="extractor-grid">
+                        <div id="z1" class="zone-indicator"><span>Z1</span></div>
+                        <div id="z2" class="zone-indicator"><span>Z2</span></div>
+                        <div id="z3" class="zone-indicator"><span>Z3</span></div>
+                        <div id="z4" class="zone-indicator"><span>Z4</span></div>
+                    </div>
+                    
+                    <button id="btn-motor-unified" onclick="toggleFan()">MOTOR OFF</button>
+                </div>
+            </div>
+
+            <div class="panel-right">
+                
+                <div class="card" style="border: 1px solid #ff4d4d;">
+                    <h2>SEGURIDAD</h2>
+                    <div class="control-group">
+                        <button id="btn-stop" class="btn-danger" onclick="sendStop()">⛔ PARADA EMG</button>
+                    </div>
+                    <div class="control-group" style="margin-top: 15px;">
+                        <button class="btn-3d btn-orange" onclick="sendReset()">⚠ RESET ALARMAS</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Configuración</h2>
+                    
+                    <div class="input-group">
+                        <label>Selección por Espesor</label>
+                        <select id="select-thickness">
+                            <option value="" disabled selected>Selecciona material...</option>
+                            <option value="1.0">1.0 mm (105.0 V)</option>
+                            <option value="2.0">2.0 mm (110.0 V)</option>
+                            <option value="3.0">3.0 mm (114.0 V)</option>
+                            <option value="4.0">4.0 mm (118.0 V)</option>
+                            <option value="5.0">5.0 mm (121.0 V)</option>
+                        </select>
+                        <button id="btn-thickness" class="btn-3d btn-cyan" onclick="sendThickness()">Cargar Tabla</button>
+                    </div>
+
+                    <hr class="divider">
+
+                    <div class="input-group">
+                        <label>Ajuste Manual (V)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="number" id="input-setpoint" step="0.1" placeholder="Ej: 125.0" style="flex:1;">
+                            <button id="btn-setpoint" class="btn-3d btn-blue" onclick="sendSetpoint()" style="width: auto; min-width: 60px;">OK</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Banda Muerta (V)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="number" id="input-deadband" step="0.1" placeholder="Ej: 2.0" style="flex:1;">
+                            <button id="btn-deadband" class="btn-3d btn-blue" onclick="sendDeadband()" style="width: auto; min-width: 60px;">OK</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const statusLight = document.getElementById('status-light');
+        const voltArcEl = document.getElementById('voltaje-arco');
+        const voltSetEl = document.getElementById('voltaje-setpoint');
+        const estadoThcEl = document.getElementById('estado-thc');
+        const inputSetpoint = document.getElementById('input-setpoint');
+        const inputDeadband = document.getElementById('input-deadband');
+        const selectThickness = document.getElementById('select-thickness');
+        
+        const elZ1 = document.getElementById('z1');
+        const elZ2 = document.getElementById('z2');
+        const elZ3 = document.getElementById('z3');
+        const elZ4 = document.getElementById('z4');
+        const btnMotor = document.getElementById('btn-motor-unified');
+
+        let ws; 
+        let paradaHMIActiva = false; //
+
+        function connect() {
+            let wsHost = `ws://${window.location.hostname}:81/`;
+            ws = new WebSocket(wsHost);
+            ws.onopen = () => { statusLight.style.backgroundColor = "#4caf50"; };
+            ws.onclose = () => { statusLight.style.backgroundColor = "#f44336"; setTimeout(connect, 3000); };
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.voltaje_arco !== undefined) voltArcEl.textContent = data.voltaje_arco.toFixed(1);
+                if (data.voltaje_setpoint !== undefined) voltSetEl.textContent = data.voltaje_setpoint.toFixed(1);
+                if (data.deadband !== undefined && inputDeadband.value === "") inputDeadband.value = data.deadband.toFixed(1);
+                
+
+                if (data.estado_thc !== undefined) {
+                    // Tomamos el texto EXACTO que manda tu C++ (¡Ya no hay parches!)
+                    const estado = data.estado_thc;
+                    
+                    estadoThcEl.textContent = estado;
+                    estadoThcEl.classList.remove("blink");
+                    let color = "#282c34";
+
+                    // Colores según las nuevas alarmas que programaste en C++
+                    if (estado.includes("EMERGENCIA") || estado.includes("PARADA") || estado.includes("FALLA COM") || estado.includes("TRIP")) { 
+                        estadoThcEl.classList.add("blink"); 
+                        color = "#d32f2f"; // Rojo parpadeante
+                    }
+                    else if (estado.includes("ARCO ABIERTO")) {
+                        color = "#212121"; // Gris oscuro
+                    } 
+                    else if (estado.includes("VOLTAJE ALTO")) {
+                        color = "#ff9800"; // Naranja (Falla de voltaje real)
+                    }
+                    else if (estado === "BAJANDO" || estado === "SUBIENDO" || estado.includes("OK")) {
+                        color = "#4caf50"; // Verde
+                    } 
+                    else if (estado.includes("ARCO APAGADO") || estado.includes("ESPERANDO")) { 
+                        color = "#fbc02d"; // Amarillo
+                        estadoThcEl.style.color = "#000000"; 
+                    }
+                    else if (estado.includes("SIN SETPOINT")) {
+                        color = "#9e9e9e"; // Gris claro
+                    }
+                    
+                    estadoThcEl.style.backgroundColor = color;
+                    if (!estado.includes("ARCO APAGADO") && !estado.includes("ESPERANDO")) {
+                        estadoThcEl.style.color = "#ffffff";
+                    }
+                }
+
+                if (data.z1 !== undefined) {
+                    toggleZone(elZ1, data.z1);
+                    toggleZone(elZ2, data.z2);
+                    toggleZone(elZ3, data.z3);
+                    toggleZone(elZ4, data.z4);
+                    
+                    // LÓGICA DEL BOTÓN UNIFICADO
+                    btnMotor.className = ""; // Resetear clases
+                    if (data.err_ext) {
+                        btnMotor.textContent = "FALLA EXTRACTOR";
+                        btnMotor.classList.add("fault");
+                    } 
+                    else if (data.motor) {
+                    // El motor está girando. ¿Por qué?
+                    if (data.man_fan) { 
+                        // Caso 1: Tú lo prendiste
+                        btnMotor.textContent = "MOTOR ON (MANUAL)";
+                        btnMotor.classList.add("manual-on"); // Naranja
+                    } 
+                    else if (data.purging) {
+                        // Caso 2: Se quedó prendido para sacar humo
+                        btnMotor.textContent = "MOTOR ON (PURGANDO 💨)";
+                        btnMotor.classList.add("auto-on"); // Azul (o podrías crear una clase .purge-on verde)
+                    }
+                    else {
+                        // Caso 3: Está cortando normal
+                        btnMotor.textContent = "MOTOR ON (AUTO)";
+                        btnMotor.classList.add("auto-on"); // Azul
+                    }
+                    } else {
+                        btnMotor.textContent = "MOTOR OFF";
+                        // Se queda con estilo gris por defecto
+                    }
+                }
+            };
+        }
+        
+        function toggleZone(el, active) {
+            if (active) el.classList.add("active");
+            else el.classList.remove("active");
+        }
+
+        function sendReset() { 
+            ws.send(JSON.stringify({ cmd: "reset_alarm" })); 
+            paradaHMIActiva = false; // <--- Limpiamos la memoria al resetear
+        }
+        function sendStop() { 
+            if(ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ cmd: "stop" }));
+            paradaHMIActiva = true; // <--- La pantalla recuerda que tú paraste la máquina
+    }
+         }
+        
+        function toggleFan() { 
+            if(ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ cmd: "toggle_fan" }));
+                
+                // --- FEEDBACK INMEDIATO (Optimista) ---
+                // Cambiamos el estilo del botón visualmente para que se sienta reactivo
+                // (El próximo mensaje del WebSocket confirmará el estado real)
+                const btn = document.getElementById('btn-motor-unified');
+                if (btn.textContent.includes("OFF")) {
+                    btn.textContent = "ESPERANDO..."; // O "MOTOR ON (MANUAL)"
+                    btn.className = "manual-on"; // Lo ponemos naranja temporalmente
+                } else {
+                    btn.textContent = "ESPERANDO...";
+                    btn.className = ""; // Gris temporalmente
+                }
+            }
+        }
+
+
+        function sendThickness() {
+            const thickness = parseFloat(selectThickness.value);
+            if (isNaN(thickness) || thickness <= 0) return;
+            ws.send(JSON.stringify({ set_thickness: thickness }));
+            inputSetpoint.value = "";
+        }
+        function sendSetpoint() {
+            const voltage = parseFloat(inputSetpoint.value);
+            if (isNaN(voltage)) return;
+            ws.send(JSON.stringify({ set_voltage: voltage }));
+            selectThickness.value = "";
+        }
+        function sendDeadband() {
+            const deadband = parseFloat(inputDeadband.value);
+            if (isNaN(deadband)) return;
+            ws.send(JSON.stringify({ set_deadband: deadband }));
+        }
+        connect();
+    </script>
+</body>
+</html>
