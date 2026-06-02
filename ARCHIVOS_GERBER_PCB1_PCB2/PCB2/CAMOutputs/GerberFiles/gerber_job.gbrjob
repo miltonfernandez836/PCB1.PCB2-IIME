@@ -1,0 +1,24 @@
+{
+    "Header": {
+        "Comment": "All values are metric (mm)",
+        "CreationDate": "2026-06-02T21:10:52Z",
+        "GenerationSoftware": {
+            "Application": "Fusion Electronics",
+            "Vendor": "Autodesk",
+            "Version": "9.7.0"
+        },
+        "Part": "Single"
+    },
+    "Overall": {
+        "BoardThickness": 1.6608,
+        "LayerNumber": 2,
+        "Name": {
+            "ProjectId": "CTR_COMP v28"
+        },
+        "Owner": "Milton Fernandez <miltonfernandez836@gmail.com>",
+        "Size": {
+            "X": 190.033881,
+            "Y": 107
+        }
+    }
+}

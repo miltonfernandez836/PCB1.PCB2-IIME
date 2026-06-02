@@ -1,0 +1,24 @@
+{
+    "Header": {
+        "Comment": "All values are metric (mm)",
+        "CreationDate": "2026-06-02T21:08:43Z",
+        "GenerationSoftware": {
+            "Application": "Fusion Electronics",
+            "Vendor": "Autodesk",
+            "Version": "9.7.0"
+        },
+        "Part": "Single"
+    },
+    "Overall": {
+        "BoardThickness": 1.6608,
+        "LayerNumber": 2,
+        "Name": {
+            "ProjectId": "DIVISOR_DE_VOLTAJE_444 v53"
+        },
+        "Owner": "Milton Fernandez <miltonfernandez836@gmail.com>",
+        "Size": {
+            "X": 149.117194,
+            "Y": 119
+        }
+    }
+}
